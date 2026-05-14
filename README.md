@@ -2,7 +2,7 @@
 
 > Statically-linked, hermetic, relocatable Zsh.
 
-- The latest version of Zsh.
+- Zsh 5.8 (not the latest version!).
 - Works virtually everywhere.
 - Takes seconds to install.
 - Doesn't require root access.
@@ -20,7 +20,7 @@
 
 ## Installation
 
-To install the latest version of Zsh, run the following command:
+To install Zsh 5.8, run the following command:
 
 ```sh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/romkatv/zsh-bin/master/install)"
@@ -233,6 +233,10 @@ works for me, I figured it might be of use to others. Eventually I integrated zs
 [zsh4humans](https://github.com/romkatv/zsh4humans#ssh).
 
 ## Limitations
+
+Zsh from zsh-bin is 5.8 -- not the latest version.
+
+---
 
 Zsh from zsh-bin cannot load user-defined compiled modules. There is no way to guarantee that
 user-defined modules have been linked with the same libc as `zsh`, so it's unsafe to load them.
