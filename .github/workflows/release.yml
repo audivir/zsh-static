@@ -1,0 +1,75 @@
+name: Release
+on:
+  release:
+    types: [published]
+permissions:
+  contents: write
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: .github/scripts/fetch-submodules.sh vendor/zsh
+      - name: Check that the release tag matches vendor/zsh
+        run: |
+          zsh_version="v$(sed -n 's/^VERSION=//p' vendor/zsh/Config/version.mk)"
+          if [ "$zsh_version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Release tag $GITHUB_REF_NAME does not match vendor/zsh ($zsh_version)"
+            exit 1
+          fi
+  build:
+    needs: check-version
+    strategy:
+      matrix:
+        include:
+          - os: macos-15
+            asset: macos-arm64
+          - os: ubuntu-latest
+            asset: linux-amd64
+          - os: ubuntu-24.04-arm
+            asset: linux-arm64
+          - os: ubuntu-latest
+            asset: linux-musl-amd64
+            static: true
+          - os: ubuntu-24.04-arm
+            asset: linux-musl-arm64
+            static: true
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: .github/scripts/fetch-submodules.sh
+      - uses: mlugg/setup-zig@v2.2.1
+        with:
+          version: 0.15.2
+      - name: Install autoconf (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y autoconf
+      - name: Install autoconf (macOS)
+        if: runner.os == 'macOS'
+        run: brew install autoconf
+      - run: ./build.sh ${{ matrix.static && '--static' || '' }}
+      - name: Package zsh
+        run: |
+          dist="dist${{ matrix.static && '-static' || '' }}"
+          tar -czf zsh-static-${{ matrix.asset }}.tar.gz -C "$dist" bin share
+      - name: Collect sources
+        if: matrix.asset == 'linux-amd64'
+        run: tar -czf zsh-static-sources.tar.gz --exclude=.git vendor
+      - uses: actions/upload-artifact@v7
+        with:
+          name: zsh-static-${{ matrix.asset }}
+          path: zsh-static-*.tar.gz
+          retention-days: 1
+  release:
+    name: Upload to GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: zsh-static-*
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
