@@ -1,0 +1,25 @@
+The code in this repository (build.sh, tests/, README.md) is licensed under the MIT License;
+see LICENSE. The way zsh finds its functions relative to its binary follows zsh-bin
+(https://github.com/romkatv/zsh-bin) by Roman Perepelitsa, which this repository is forked from.
+
+The zsh binaries produced by build.sh and published under GitHub Releases embed the following
+third-party projects, vendored unmodified as git submodules under vendor/ at their release tags.
+Each keeps its own license, and the combined binaries are governed by the union of these
+licenses, not by the MIT License above.
+
+zsh
+  https://www.zsh.org
+  Copyright (c) Paul Falstad, the Zsh Development Group, and contributors
+  License: the MIT-like license in vendor/zsh/LICENCE; a few shell functions are under the GNU
+  General Public License v2 (or later), namely the completions _darcs, _osc, _qdbus, and _zypper
+  The man pages are taken from the zsh release tarball (zsh-<version>.tar.xz on zsh.org).
+
+ncurses
+  https://invisible-island.net/ncurses/
+  Copyright (c) Thomas E. Dickey and Free Software Foundation, Inc.
+  License: X11 License (MIT-style)
+
+Because some of the shipped shell functions are under the GPL, anyone who redistributes the
+release archives must satisfy the GPL for them, such as making the corresponding source available.
+The release workflow attaches the exact vendored sources used for the build
+(zsh-static-sources.tar.gz) to every release for this purpose.

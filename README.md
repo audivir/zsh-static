@@ -1,323 +1,85 @@
-# zsh-bin
+# zsh-static
 
-> Statically-linked, hermetic, relocatable Zsh.
+Portable, relocatable builds of the latest [zsh](https://www.zsh.org) with ncurses linked in
+statically, built with [zig](https://ziglang.org) as the C toolchain. Forked from
+[zsh-bin](https://github.com/romkatv/zsh-bin), whose builds stay at zsh 5.8.
 
-- Zsh 5.8 (not the latest version!).
-- Works virtually everywhere.
-- Takes seconds to install.
-- Doesn't require root access.
-- Does not have prerequisites.
+- Linux glibc: only glibc is linked dynamically, and only symbols up to glibc 2.17, so the
+  binaries run on anything from CentOS 7 onwards
+- Linux musl (`--static`): fully static, no runtime dependencies at all (e.g. Alpine)
+- macOS: only libSystem is dynamic (it ships with macOS, which has no fully static binaries)
 
-## Table of Contents
+All modules are linked into the binary, apart from `zsh/db/gdbm`, `zsh/pcre`, `zsh/cap`, and
+`zsh/attr`, which need libraries that are not built. zsh finds its functions relative to its
+binary, from `/proc/self/exe` on Linux and `proc_pidpath` on macOS, so the install works from any
+directory, also through symlinks. The startup files in `/etc` of a system zsh are not read.
 
-- [Installation](#installation)
-- [Compiling](#compiling)
-- [How it works](#how-it-works)
-- [Supported platforms](#supported-platforms)
-- [Why?](#why)
-- [No, seriously, why?](#no-seriously-why)
-- [Limitations](#limitations)
+Common terminal descriptions (xterm, xterm-256color, screen, screen-256color, tmux, tmux-256color,
+linux, vt100, vt220, rxvt, alacritty, kitty, foot, wezterm, ...) are compiled into ncurses, so the
+line editor works even on systems without a terminfo database. The system database is still used
+first, from `/etc/terminfo`, `/lib/terminfo`, `/usr/share/terminfo`, and `/usr/lib/terminfo`, or
+from `$TERMINFO`, `$TERMINFO_DIRS`, and `~/.terminfo`.
+
+## Prerequisites
+
+- `zig`, GNU make (the `make` 3.81 of macOS is enough), `git`, `curl`, `xz`
+- `autoconf` (the git tree of zsh ships no `configure` script)
+- On macOS: Xcode Command Line Tools (SDK)
 
 ## Installation
 
-To install Zsh 5.8, run the following command:
+Clone the repo with submodules (shallow, the history of the vendored projects is not needed):
 
-```sh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/romkatv/zsh-bin/master/install)"
+```shell
+git clone --recurse-submodules --shallow-submodules https://github.com/audivir/zsh-static
+cd zsh-static
 ```
 
-Or, if you don't have `curl`:
+## Usage
 
-```sh
-sh -c "$(wget -O- https://raw.githubusercontent.com/romkatv/zsh-bin/master/install)"
+```shell
+./build.sh
 ```
 
-Here's what it looks like:
+This builds ncurses from `vendor/` as static libraries, then builds zsh against them. Output is
+installed under `dist/`, a tree to copy to any prefix (e.g. `~/.local`):
 
-```text
-$ sh -c "$(curl -fsSL https://raw.githubusercontent.com/romkatv/zsh-bin/master/install)"
-Choose installation directory for Zsh 5.8:
+- `dist/bin/zsh`: the binary
+- `dist/share/zsh/<version>/functions`: the functions, including the completions
+- `dist/share/man/man1`: the man pages, taken from the zsh release tarball, as building them needs
+  yodl
 
-  (1) /usr/local        <= uses sudo (recommended)
-  (2) ~/.local          <= does not need sudo
-  (3) custom directory  <= manual input required
+Pass `--static` for the fully static musl build on Linux (output in `dist-static/`), `--clean` to
+remove previous build output first, and `--jobs N` to control parallelism.
 
-Choice: 1
+To run the smoke tests against the build:
 
-===> installing Zsh 5.8 to /usr/local
-===> fetching zsh-5.8-linux-x86_64.tar.gz
-===> verifying archive integrity
-===> sha256 signature matches
-===> md5 signature matches
-===> extracting files
-
-Installed Zsh 5.8 to /usr/local
-
-To start Zsh, type:
-
-  zsh
+```shell
+./tests/run_smoke_tests.sh            # dist/
+./tests/run_smoke_tests.sh --static   # dist-static/
 ```
 
-*Tip*: choose to install to `/usr/local` if you have root access on the machine and to `~/.local`
-if you don't.
+## Releases
 
-*Tip*: `install` has a few optional flags. Invoke it with `-h` to list them.
+Publishing a GitHub release tagged with the zsh version (e.g. `v5.9.2`, matching the tag checked
+out in `vendor/zsh`) builds and attaches `zsh-static-<platform>.tar.gz` for `macos-arm64`,
+`linux-amd64`, `linux-arm64`, `linux-musl-amd64`, and `linux-musl-arm64`, together with the
+sources they were built from (`zsh-static-sources.tar.gz`).
 
-*Tip*: if you don't have internet access on the target machine, download
-[install](https://raw.githubusercontent.com/romkatv/zsh-bin/master/install) and the appropriate
-`zsh-*.tar.gz` archive from [releases](https://github.com/romkatv/zsh-bin/releases/latest) on
-another machine, transfer both files to the target machine, and run `install` with `-f` there.
+To update a vendored project, check out a new release tag in its submodule and commit it, e.g.
+`git -C vendor/zsh fetch --depth 1 origin tag zsh-5.9.3 && git -C vendor/zsh checkout zsh-5.9.3`.
 
-## Compiling
+## Acknowledgments
 
-```sh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/romkatv/zsh-bin/master/build)"
-```
+This repository is forked from [zsh-bin](https://github.com/romkatv/zsh-bin) by Roman
+Perepelitsa. It builds and vendors the following upstream projects, unmodified, as git submodules
+under `vendor/`. Credit goes to their respective authors:
 
-*Tip*: `build` has a few optional flags. Invoke it with `-h` to list them.
+- [zsh](https://www.zsh.org) by Paul Falstad, the Zsh Development Group, and contributors
+- [ncurses](https://invisible-island.net/ncurses/) by Thomas E. Dickey and the Free Software
+  Foundation
 
-On Linux build is done in a Docker container, so you'll need to install docker first. On non-Linux
-systems build is done on the host. In the latter case it's recommended to run the script in a
-freshly installed OS.
+## License
 
-If everything goes well, `zsh-5.8-${KERNEL}-${ARCH}.tar.gz` will appear in the current directory.
-This archive contains statically-linked, hermetic, relocatable Zsh 5.8. Installation of Zsh from the
-archive doesn't require libc, ncurses, pcre, terminfo database or root access. As long as the target
-machine has a compatible CPU and kernel, it'll work.
-
-You can find built archives in [releases](https://github.com/romkatv/zsh-bin/releases).
-
-The build script stores source code tarballs that have been used during compilation in `./src`. If
-you run `build` again, it'll use these tarballs after verifying that their content is as expected.
-This way you avoid downloading the same tarballs over and over again when running `build` multiple
-times.
-
-## How it works
-
-A regular build of Zsh cannot be transplanted to another machine due to having dependencies on
-system files and hard-coded absolute paths to Zsh's own autoloadable functions and scripts. This
-section explains how zsh-bin solves these problems.
-
-zsh-bin uses fully static linking to avoid dependencies on dynamic libraries and program loader. It
-includes an extensive terminfo database that it falls back to if there is no suitable entry
-for `$TERM` in the system database. These two measures remove all dependencies on files outside of
-zsh-bin.
-
-The main `zsh` binary in zsh-bin contains hard-coded absolute paths to autoloadable functions and
-scripts, just like in the regular build of Zsh, but they are laid out in such a way as to allow for
-replacement through binary patching. In a nutshell, when you build Zsh normally, the C source code
-contains something like this:
-
-```c
-#define FPATH_DIR "/usr/share/zsh/5.8/functions"
-```
-
-If you start `zsh` and check the value of `fpath` parameter, you'll see that it contains
-`/usr/share/zsh/5.8/functions`. This comes from `FPATH_DIR` that got fixed during compilation.
-
-When you build Zsh with zsh-bin scripts, the C code looks a bit different:
-
-```c
-#define FPATH_DIR_TAG ":iLWDLaG9dUlsxzEQp10k:fpath:"
-#define FPATH_DIR ((const char *)(tagged_fpath_dir + sizeof(FPATH_DIR_TAG) - 1))
-volatile char tagged_fpath_dir[sizeof(FPATH_DIR_TAG) + 4096] = {
-  FPATH_DIR_TAG "/usr/share/zsh/5.8/functions"
-};
-```
-
-`FPATH_DIR` still resolves to `/usr/share/zsh/5.8/functions`, so `fpath` parameter has the same
-value as before. What's different is the content of `zsh` binary.
-
-Regular `zsh` binary:
-
-```text
-                  FPATH_DIR points here
-                            |
-                            v
-????????????????????????????/usr/share/zsh/5.8/functions·???????????????????????
-            ^                                           ^              ^
-            |                                           |              |
-            |                                     NUL terminator       |
-            |                                                          |
-            +---------- other data and code----------------------------+
-```
-
-`zsh` from zsh-bin:
-
-```text
-                  FPATH_DIR points here
-                            |
-                            v
-:iLWDLaG9dUlsxzEQp10k:fpath:/usr/share/zsh/5.8/functions·***********************
-            ^                                           ^              ^
-            |                                           |              |
-  magic marker, trailing p10k totally accidental ;-)    |              |
-                                                        |              |
-                                                  NUL terminator       |
-                                                                       |
-                                enough space for a 4096-character-long directory
-```
-
-Now it's possible to "relocate" autoloadable functions by finding `:iLWDLaG9dUlsxzEQp10k:` inside
-`zsh` and writing a new directory after it. `relocate` script included in zsh-bin does just
-that. It's written in POSIX sh, so it'll run anywhere. Here's the relevant part of `relocate`
-(simplified):
-
-```sh
-magic=iLWDLaG9dUlsxzEQp10k
-bin=$(LC_ALL=C tr -c '[:alnum:]:' ' ' <"$zsh")
-prefix="${bin%:$magic:fpath:*}:$magic:fpath:"
-dd if=/dev/zero of="$zsh" bs=1 seek=${#prefix} count=4096 conv=notrunc
-echo "$new_fpath_dir" | dd of="$zsh" bs=1 seek=${#prefix} count=${#dir} conv=notrunc
-```
-
-## Supported platforms
-
-The build script currently works on Linux, macOS, FreeBSD, Cygwin and MSYS2. Prebuilt archives for
-popular CPU architectures can be found in [releases](https://github.com/romkatv/zsh-bin/releases).
-
-You can use `zsh-5.8-linux-x86_64.tar.gz` on WSL but you cannot run the build script there.
-
-## Why?
-
-Assuming that you want to use Zsh 5.8 (who doesn't, right?), ideally you would install it with the
-official package manager for your OS. If your OS doesn't provide an option to install Zsh 5.8,
-or you don't have root access to install it, you'll need to look for alternative installation
-methods.
-
-The next thing you can try is to [build Zsh from source](
-  https://github.com/zsh-users/zsh/blob/master/INSTALL) on the target machine. This method allows
-you to install any version of Zsh to any directory. If you don't have root access, you can choose to
-install Zsh to your home directory. However, if some of the tools necessary for building Zsh are
-missing (autoconf, make, gcc, yodl, ncurses, etc.), this option is also out.
-
-If you have access to another machine with compatible CPU, kernel and runtime, and with all
-necessary build tools, you can compile Zsh there and copy build artifacts to the target
-machine. If you place all files in the same location and set a few custom environment variables, it
-should work.
-
-Or you can download a 4MB archive from zsh-bin, extract it, and enjoy Zsh 5.8.
-
-## No, seriously, why?
-
-I `ssh` to servers through a Bash wrapper script that automatically copies my admin tools and shell
-configs from local host to remote. Here's the gist of it:
-
-```bash
-#!/usr/bin/env bash
-#
-# Usage: ssh.bash [ssh-options] [user@]hostname
-
-set -ueo pipefail
-dump=$(tar -C ~ -pcz -- .bashrc admin-scripts | base64)
-ssh -t "$@" "echo '$dump'" | base64 -d | tar -C ~ -pxz  && exec bash -il'
-```
-
-It archives a few local files and runs a command over SSH. This command extracts files from
-the archive and starts Bash. Pretty simple.
-
-I'm using Zsh locally but Bash remotely. I don't install Zsh on servers as it's not necessary for
-running things. Some of the servers are also tricky to get Zsh onto. For example, network routers
-running EdgeOS.
-
-In March of 2020 an [announcement](
-  https://www.reddit.com/r/zsh/comments/fiq9w2/bring_zsh_with_ohmyzsh_wherever_you_go_through/) was
-posted on [/r/zsh](https://www.reddit.com/r/zsh/). It mentioned that "xxh uses the portable
-version of Zsh". I thought it would be cool to migrate my `ssh.bash` script to Zsh and install
-the portable version of Zsh on the remote host if there isn't one already installed (this is
-basically what [xxh](https://github.com/xxh/xxh) does).
-
-This worked in some cases but not always as the version of Zsh from xxh turned out not portable
-enough for my needs. I set out to build a more portable alternative and created zsh-bin. Since it
-works for me, I figured it might be of use to others. Eventually I integrated zsh-bin with
-[zsh4humans](https://github.com/romkatv/zsh4humans#ssh).
-
-## Limitations
-
-Zsh from zsh-bin is 5.8 -- not the latest version.
-
----
-
-Zsh from zsh-bin cannot load user-defined compiled modules. There is no way to guarantee that
-user-defined modules have been linked with the same libc as `zsh`, so it's unsafe to load them.
-This limitation likely cannot be removed.
-
----
-
-Not all standard zsh modules are enabled on all platforms:
-
-- `zsh/db_gdbm` is enabled only on Linux.
-- `zsh/attr` is disabled on FreeBSD.
-- `zsh/pcre` is disabled on Cygwin.
-
-This can be fixed. Please open an issue or better yet send a PR if you care.
-
----
-
-Zsh from zsh-bin doesn't read global rc files from anywhere. It does read user rc files of course.
-
-This can be changed. An empty `etc` directory could be added to the archive, from which Zsh would
-source `zshenv` and similar files if they exist. Please open an issue or better yet send a PR if you
-care.
-
----
-
-The build script doesn't work if `/bin/sh` is bash v4.4 or older. Use a newer version of bash or
-a different interpreter. Try `zsh`, `dash` and `ash`. You might have one of these already installed.
-
-This limitation can be removed but the motivation is rather low for doing this. There is no need
-for the build script to be super portable. The install script and `relocate` are a different matter.
-They must be very portable and they are. They work on older versions of bash just fine.
-
----
-
-The build script requires certain software to be installed by the user. For example, on Linux it
-needs Docker but cannot install it on its own. When you run `build`, it'll tell you what's missing.
-
----
-
-Builds are done natively, meaning that the target kernel and CPU architecture must be the same as
-on the host. Given a Linux-x86_64 host, you can build Zsh for Linux-x86_64 and Linux-i686 but
-not for Linux-aarch64 or Darwin-x86_64.
-
-All archives in [releases](https://github.com/romkatv/zsh-bin/releases) are produced by [mbuild](
-  https://github.com/romkatv/zsh-bin/blob/release/mbuild). This script builds Zsh on remote machines
-over SSH. It's not an officially supported script, so please don't expect it to be stable or well
-documented.
-
----
-
-The build script doesn't know how to build man pages and help files on macOS. The problem is that
-there is no `yodl` for macOS and porting it is a daunting task. To get out of this conundrum `build`
-pulls man pages and help files from `zsh-5.8-linux-x86_64.tar.gz` and embeds them in
-`zsh-5.8-darwin-x86_64.tar.gz`. So if you are trying to reproduce the macOS build, you'll need to
-start by building Zsh for Linux-x86_64.
-
----
-
-If installation instructions are not followed, certain things won't work.
-
-For example, if instead of running `install` you simply download and extract
-`zsh-5.8-linux-x86_64.tar.gz`, you'll get errors when trying to use builtin autoloadable functions:
-
-```text
-add-zsh-hook: function definition file not found
-is-at-least: function definition file not found
-compinit: function definition file not found
-```
-
-If you don't add `bin` subdirectory of the installation directory to `PATH`, `zsh` command may fail:
-
-```zsh
-zsh: command not found
-```
-
-If you work around this problem by adding a symbolic link to `zsh` to a directory in your `PATH`,
-`man zsh` may still fail:
-
-```text
-No manual entry for zsh
-```
-
-The easiest solution for problems of this kind is to follow the installation instructions. If you
-cannot or don't want to, improvise.
+MIT for the code in this repository. See `NOTICE` for the licenses of the upstream projects and the
+resulting binaries.
