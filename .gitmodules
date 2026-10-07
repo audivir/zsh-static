@@ -1,0 +1,8 @@
+[submodule "vendor/zsh"]
+    path = vendor/zsh
+    url = https://github.com/zsh-users/zsh.git
+    shallow = true
+[submodule "vendor/ncurses"]
+    path = vendor/ncurses
+    url = https://github.com/ThomasDickey/ncurses-snapshots.git
+    shallow = true
