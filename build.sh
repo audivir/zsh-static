@@ -214,7 +214,9 @@ END
     CFLAGS="-Os" CPPFLAGS="-I$PREFIX/include -I$PREFIX/include/ncursesw" LDFLAGS="$LDFLAGS"
   # links every module into the binary, apart from those needing libraries that are not built.
   sed -i.orig -e 's/link=dynamic/link=static/' -e 's/link=no/link=static/' \
-    -e '/name=zsh\/\(db\/gdbm\|pcre\|cap\|attr\) /s/link=static/link=no/' config.modules
+    -e '/name=zsh\/db\/gdbm /s/link=static/link=no/' -e '/name=zsh\/pcre /s/link=static/link=no/' \
+    -e '/name=zsh\/cap /s/link=static/link=no/' -e '/name=zsh\/attr /s/link=static/link=no/' \
+    config.modules
   "$MAKE" -j"$JOBS"
   rm -rf "$WORK/out"
   "$MAKE" DESTDIR="$WORK/out" install.bin install.modules install.fns
