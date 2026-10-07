@@ -1,3 +1,17 @@
-/archives
-/locks
-/logs
+# editors
+.idea/
+.vscode/
+
+# os
+.DS_Store
+Thumbs.db
+
+# environment variables
+.env
+env/
+
+# custom exclusions
+/build/
+/build-*/
+/dist/
+/dist-*/

@@ -1,6 +1,11 @@
+This license applies only to the code in this repository (build.sh, tests/, README.md, and
+related files). It does not apply to the upstream projects built by build.sh or to the zsh
+binaries built from them, which carry their own licenses. See NOTICE.
+
 MIT License
 
 Copyright (c) 2020 Roman Perepelitsa
+Copyright (c) 2026 audivir
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
